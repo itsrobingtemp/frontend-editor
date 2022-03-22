@@ -4,3 +4,6 @@ node_js:
 script:
   - npm install
   - npm test
+jobs:
+  include:
+    if: branch = test
