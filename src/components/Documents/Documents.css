@@ -1,0 +1,18 @@
+.document__wrapper {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin: 0.5rem 0rem;
+  cursor: pointer;
+}
+
+.document__wrapper:hover {
+  background: #f5f5f5;
+}
+
+.documents__wrapper {
+  margin-top: 2rem;
+}
+
+.document__active {
+  background: #f5f5f5;
+}
