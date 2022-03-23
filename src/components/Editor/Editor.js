@@ -11,7 +11,7 @@ import Error from "../Error/Error";
 // CSS
 import "./Editor.css";
 
-function Editor() {
+function Editor({ socket }) {
   // All documents fetched
   const [documents, setDocuments] = useState([]);
 
@@ -42,6 +42,25 @@ function Editor() {
       });
   }, [documentsUpdated, API_URL]);
 
+  // Joining room for the document
+  useEffect(() => {
+    socket.emit("create", currentDocument._id);
+  }, [currentDocument, socket]);
+
+  // Data to be emitted
+  let data = {
+    _id: currentDocument._id,
+    html: currentText,
+  };
+
+  // Emitting data to server
+  socket.emit("doc", data);
+
+  // Receiving data from server
+  socket.on("doc", (data) => {
+    setCurrentText(data.html);
+  });
+
   // Setting new document
   const setNewDocumentValue = (document) => {
     setCurrentText(document.text);
@@ -64,7 +83,6 @@ function Editor() {
         name: currentName,
       })
       .then((res) => {
-        console.log(res);
         setDocumentsUpdated(!documentsUpdated);
       })
       .catch((err) => setError(true));
@@ -78,7 +96,6 @@ function Editor() {
         name: currentName,
       })
       .then((res) => {
-        console.log(res);
         setDocumentsUpdated(!documentsUpdated);
       })
       .catch((err) => setError(true));
