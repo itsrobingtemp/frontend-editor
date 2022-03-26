@@ -29,18 +29,31 @@ function Editor({ socket }) {
 
   // Error
   const [error, setError] = useState(false);
+  const [customError, setCustomError] = useState("");
+  const [message, setMessage] = useState("");
 
-  const API_URL = process.env.REACT_APP_API_PROD_URL;
+  const API_URL = process.env.REACT_APP_API_DEV_URL;
   // const API_DEV_URL = process.env.REACT_APP_API_DEV_URL;
+  const token = localStorage.getItem("auth-token");
 
   // Get all documents on load
   useEffect(() => {
-    fetch(API_URL + "/get")
-      .then((res) => res.json())
-      .then((data) => {
-        setDocuments(data);
-      });
-  }, [documentsUpdated, API_URL]);
+    if (token) {
+      axios
+        .get(API_URL + "/get", {
+          headers: {
+            Authorization: token,
+          },
+        })
+        .then((res) => {
+          if (res.data.length > 0) {
+            setDocuments(res.data);
+          } else {
+            setMessage("Denna användare har inga nuvarande dokument");
+          }
+        });
+    }
+  }, [documentsUpdated, API_URL, token]);
 
   // Joining room for the document
   useEffect(() => {
@@ -77,28 +90,50 @@ function Editor({ socket }) {
   // Update document
   const updateDocument = () => {
     axios
-      .patch(API_URL + "/update/" + currentDocument._id, {
-        _id: currentDocument._id,
-        text: currentText,
-        name: currentName,
-      })
+      .patch(
+        API_URL + "/update/" + currentDocument._id,
+        {
+          _id: currentDocument._id,
+          text: currentText,
+          name: currentName,
+        },
+        {
+          headers: { Authorization: token },
+        }
+      )
       .then((res) => {
+        setError("");
         setDocumentsUpdated(!documentsUpdated);
+        setMessage("Dokumentet har uppdaterats");
       })
-      .catch((err) => setError(true));
+      .catch((err) => {
+        setMessage("");
+        setError(true);
+      });
   };
 
   // Add new document
   const createDocument = () => {
     axios
-      .post(API_URL + "/post", {
-        text: currentText,
-        name: currentName,
-      })
+      .post(
+        API_URL + "/post",
+        {
+          text: currentText,
+          name: currentName,
+        },
+        {
+          headers: { Authorization: token },
+        }
+      )
       .then((res) => {
+        setError("");
         setDocumentsUpdated(!documentsUpdated);
+        setMessage("Dokumentet har skapats");
       })
-      .catch((err) => setError(true));
+      .catch((err) => {
+        setMessage("");
+        setError(true);
+      });
   };
 
   return (
@@ -108,9 +143,6 @@ function Editor({ socket }) {
         updateDocument={updateDocument}
         createDocument={createDocument}
       />
-
-      {error && <Error />}
-
       <input
         type="text"
         className="input__name"
@@ -118,12 +150,18 @@ function Editor({ socket }) {
         value={currentName}
         onChange={(e) => setCurrentName(e.target.value)}
       />
-
       <ReactQuill theme="snow" value={currentText} onChange={setCurrentText} />
-      <Documents
-        documents={documents}
-        setNewDocumentValue={setNewDocumentValue}
-      />
+
+      {error && <Error />}
+      {customError && <Error customError={customError} />}
+      {message && <div className="message__wrapper">{message}</div>}
+
+      {documents.length > 0 && (
+        <Documents
+          documents={documents}
+          setNewDocumentValue={setNewDocumentValue}
+        />
+      )}
     </>
   );
 }

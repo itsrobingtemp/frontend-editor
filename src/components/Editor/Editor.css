@@ -8,3 +8,10 @@
   border: 1px solid #ccc;
   font-size: 1.2rem;
 }
+
+.message__wrapper {
+  background: rgb(26, 182, 26);
+  padding: 1rem;
+  color: #fff;
+  margin-top: 1rem;
+}

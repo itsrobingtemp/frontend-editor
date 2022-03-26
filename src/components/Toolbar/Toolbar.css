@@ -5,15 +5,3 @@
   display: flex;
   justify-content: space-between;
 }
-
-.toolbar__btn {
-  border: 1px solid #ccc;
-  border-radius: 0.2rem;
-  padding: 0.5rem 2rem;
-  background: none;
-  cursor: pointer;
-}
-
-.toolbar__btn:hover {
-  background: #f5f5f5;
-}
