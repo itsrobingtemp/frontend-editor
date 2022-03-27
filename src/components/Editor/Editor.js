@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+// import ReactQuill, { Quill } from "react-quill";
+// import "react-quill/dist/quill.snow.css";
+import "quill/dist/quill.snow.css";
+import Quill from "quill";
 import axios from "axios";
 
 // CSS
@@ -13,23 +15,98 @@ import Errors from "../Errors/Errors";
 
 // Socket
 import socketIOClient from "socket.io-client";
-const socket = socketIOClient("http://127.0.0.1:1337");
 
 function Editor() {
+  const [socket, setSocket] = useState();
+  const [quill, setQuill] = useState();
+
   // All documents fetched
   const [documents, setDocuments] = useState([]);
 
   // Document states
-  const [currentText, setCurrentText] = useState("");
-  const [currentName, setCurrentName] = useState("Untitled");
+  const [currentName, setCurrentName] = useState("Default titel");
   const [currentDocumentId, setCurrentDocumentId] = useState("");
 
   // If a doc gets updated, fetch them again
   const [documentsUpdated, setDocumentsUpdated] = useState(false);
 
   const API_URL = process.env.REACT_APP_API_DEV_URL;
-  // const API_DEV_URL = process.env.REACT_APP_API_DEV_URL;
-  const token = localStorage.getItem("auth-token");
+  const token = localStorage.getItem("auth-token") || "";
+
+  // Quill editor
+  const quillRef = useCallback((wrapper) => {
+    if (wrapper == null) return;
+    wrapper.innerHTML = "";
+    const editor = document.createElement("div");
+    wrapper.append(editor);
+
+    const q = new Quill(editor, { theme: "snow" });
+
+    setQuill(q);
+
+    return () => {
+      quillRef.innerHTML = "";
+    };
+  }, []);
+
+  // Socket connection
+  useEffect(() => {
+    const s = socketIOClient("http://127.0.0.1:1337", {
+      query: { token },
+    });
+
+    console.log("Connected to socket");
+
+    setSocket(s);
+
+    return () => {
+      s.disconnect();
+    };
+  }, [token]);
+
+  // Send socket changes
+  useEffect(() => {
+    if (socket == null || quill == null) return;
+
+    socket.emit("doc-joined", currentDocumentId);
+
+    const handleDocUpdate = (delta, oldDelta, source) => {
+      if (source !== "user") return;
+
+      let data = {
+        _id: currentDocumentId,
+        delta,
+      };
+
+      socket.emit("send-doc-changes", data);
+    };
+
+    quill.on("text-change", handleDocUpdate);
+
+    return () => {
+      quill.off("text-change", handleDocUpdate);
+    };
+  }, [socket, quill, currentDocumentId]);
+
+  // Receive socket changes
+  useEffect(() => {
+    if (socket == null || quill == null) return;
+
+    const handleDocUpdate = (delta) => {
+      quill.updateContents(delta);
+    };
+
+    socket.on("receive-doc-changes", handleDocUpdate);
+
+    return () => {
+      socket.off("receive-doc-changes", handleDocUpdate);
+    };
+  }, [socket, quill]);
+
+  // Error
+  const [error, setError] = useState(false);
+  const [customError, setCustomError] = useState("");
+  const [message, setMessage] = useState("");
 
   // Get all documents on load
   useEffect(() => {
@@ -48,51 +125,6 @@ function Editor() {
     }
   }, [documentsUpdated, API_URL, token]);
 
-  // Joining room for the document id
-  useEffect(() => {
-    socket.emit("create", currentDocumentId);
-  }, [currentDocumentId]);
-
-  // Sockets
-  useEffect(() => {
-    socket.on("connect", () => {
-      console.log("connected");
-    });
-
-    // Receiving data from server
-    socket.on("doc", (data) => {
-      setCurrentText(data.html);
-    });
-
-    let data = {
-      _id: currentDocumentId,
-      html: currentText,
-    };
-
-    // Emitting data to server
-    socket.emit("doc", data);
-
-    return () => socket.off("doc");
-  }, [currentText, currentDocumentId]);
-
-  // Setting new document test
-  const setNewDocumentValue = (document) => {
-    setCurrentText(document.text);
-    setCurrentName(document.name);
-    setCurrentDocumentId(document._id);
-  };
-
-  const resetDocumentValue = () => {
-    setCurrentText("");
-    setCurrentName("");
-    setCurrentDocumentId("");
-  };
-
-  // Error
-  const [error, setError] = useState(false);
-  const [customError, setCustomError] = useState("");
-  const [message, setMessage] = useState("");
-
   // Update document
   const updateDocument = () => {
     axios
@@ -100,7 +132,7 @@ function Editor() {
         API_URL + "/update/" + currentDocumentId,
         {
           _id: currentDocumentId,
-          text: currentText,
+          text: quill.getContents(),
           name: currentName,
         },
         {
@@ -124,7 +156,7 @@ function Editor() {
       .post(
         API_URL + "/post",
         {
-          text: currentText,
+          text: quill.getContents(),
           name: currentName,
         },
         {
@@ -141,6 +173,19 @@ function Editor() {
         setMessage("");
         setError(true);
       });
+  };
+
+  // Setting new document
+  const setNewDocumentValue = (document) => {
+    quill.setContents(document.text);
+    setCurrentName(document.name);
+    setCurrentDocumentId(document._id);
+  };
+
+  const resetDocumentValue = () => {
+    quill.setContents();
+    setCurrentName("");
+    setCurrentDocumentId("");
   };
 
   return (
@@ -165,7 +210,7 @@ function Editor() {
         onChange={(e) => setCurrentName(e.target.value)}
       />
 
-      <ReactQuill theme="snow" value={currentText} onChange={setCurrentText} />
+      <div className="quill__container" ref={quillRef}></div>
 
       {documents.length > 0 && (
         <Documents
