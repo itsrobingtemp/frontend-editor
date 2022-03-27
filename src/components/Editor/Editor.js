@@ -48,7 +48,7 @@ function Editor() {
     }
   }, [documentsUpdated, API_URL, token]);
 
-  // Joining room for the document
+  // Joining room for the document id
   useEffect(() => {
     socket.emit("create", currentDocumentId);
   }, [currentDocumentId]);
