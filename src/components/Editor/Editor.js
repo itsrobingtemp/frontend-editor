@@ -1,6 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-// import ReactQuill, { Quill } from "react-quill";
-// import "react-quill/dist/quill.snow.css";
+import React, { useState, useEffect, useCallback } from "react";
 import "quill/dist/quill.snow.css";
 import Quill from "quill";
 import axios from "axios";
@@ -27,11 +25,18 @@ function Editor() {
   const [currentName, setCurrentName] = useState("Default titel");
   const [currentDocumentId, setCurrentDocumentId] = useState("");
 
-  // If a doc gets updated, fetch them again
+  // If a doc gets updated, fetch list again
   const [documentsUpdated, setDocumentsUpdated] = useState(false);
 
+  // Variables
   const API_URL = process.env.REACT_APP_API_DEV_URL;
+  const SOCKET_URL = "http://127.0.0.1:1338";
   const token = localStorage.getItem("auth-token") || "";
+
+  // Error
+  const [error, setError] = useState(false);
+  const [customError, setCustomError] = useState("");
+  const [message, setMessage] = useState("");
 
   // Quill editor
   const quillRef = useCallback((wrapper) => {
@@ -51,7 +56,7 @@ function Editor() {
 
   // Socket connection
   useEffect(() => {
-    const s = socketIOClient("http://127.0.0.1:1337", {
+    const s = socketIOClient(SOCKET_URL, {
       query: { token },
     });
 
@@ -102,11 +107,6 @@ function Editor() {
       socket.off("receive-doc-changes", handleDocUpdate);
     };
   }, [socket, quill]);
-
-  // Error
-  const [error, setError] = useState(false);
-  const [customError, setCustomError] = useState("");
-  const [message, setMessage] = useState("");
 
   // Get all documents on load
   useEffect(() => {
@@ -175,13 +175,14 @@ function Editor() {
       });
   };
 
-  // Setting new document
+  // Loading a new document
   const setNewDocumentValue = (document) => {
     quill.setContents(document.text);
     setCurrentName(document.name);
     setCurrentDocumentId(document._id);
   };
 
+  // Resetting to blank document
   const resetDocumentValue = () => {
     quill.setContents();
     setCurrentName("");
