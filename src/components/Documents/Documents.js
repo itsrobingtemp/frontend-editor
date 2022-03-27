@@ -1,8 +1,5 @@
-// import { useState } from "react";
-
 // CSS
 import "./Documents.css";
-// import { getDocumentPreview } from "../../helpers/helpers.js";
 
 function Documents({ documents, setNewDocumentValue }) {
   return (

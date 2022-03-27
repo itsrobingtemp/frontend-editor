@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 // CSS
@@ -12,10 +12,6 @@ import Register from "./pages/Register/Register.js";
 // components
 import Nav from "./components/Nav/Nav";
 
-// Socket
-import socketIOClient from "socket.io-client";
-
-const socket = socketIOClient("http://127.0.0.1:1337");
 // const ENDPOINT = process.env.REACT_APP_SOCKET_ENDPOINT;
 
 function App() {
@@ -36,9 +32,13 @@ function App() {
           <Route
             path="/"
             element={
-              <div className="editor__wrapper">
-                <Editor socket={socket} />
-              </div>
+              loggedIn ? (
+                <div className="editor__wrapper">
+                  <Editor />
+                </div>
+              ) : (
+                <Login />
+              )
             }
           />
           <Route path="/login" element={<Login />} />

@@ -3,34 +3,29 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import axios from "axios";
 
-// Components
-import Toolbar from "../Toolbar/Toolbar";
-import Documents from "../Documents/Documents";
-import Error from "../Error/Error";
-
 // CSS
 import "./Editor.css";
 
-function Editor({ socket }) {
+// Components
+import Toolbar from "../Toolbar/Toolbar";
+import Documents from "../Documents/Documents";
+import Errors from "../Errors/Errors";
+
+// Socket
+import socketIOClient from "socket.io-client";
+const socket = socketIOClient("http://127.0.0.1:1337");
+
+function Editor() {
   // All documents fetched
   const [documents, setDocuments] = useState([]);
 
-  // Current text in editor
+  // Document states
   const [currentText, setCurrentText] = useState("");
-
-  // Current name for document
   const [currentName, setCurrentName] = useState("Untitled");
-
-  // Current document loaded
-  const [currentDocument, setCurrentDocument] = useState({});
+  const [currentDocumentId, setCurrentDocumentId] = useState("");
 
   // If a doc gets updated, fetch them again
   const [documentsUpdated, setDocumentsUpdated] = useState(false);
-
-  // Error
-  const [error, setError] = useState(false);
-  const [customError, setCustomError] = useState("");
-  const [message, setMessage] = useState("");
 
   const API_URL = process.env.REACT_APP_API_DEV_URL;
   // const API_DEV_URL = process.env.REACT_APP_API_DEV_URL;
@@ -48,8 +43,6 @@ function Editor({ socket }) {
         .then((res) => {
           if (res.data.length > 0) {
             setDocuments(res.data);
-          } else {
-            setMessage("Denna användare har inga nuvarande dokument");
           }
         });
     }
@@ -57,43 +50,56 @@ function Editor({ socket }) {
 
   // Joining room for the document
   useEffect(() => {
-    socket.emit("create", currentDocument._id);
-  }, [currentDocument, socket]);
+    socket.emit("create", currentDocumentId);
+  }, [currentDocumentId]);
 
-  // Data to be emitted
-  let data = {
-    _id: currentDocument._id,
-    html: currentText,
-  };
+  // Sockets
+  useEffect(() => {
+    socket.on("connect", () => {
+      console.log("connected");
+    });
 
-  // Emitting data to server
-  socket.emit("doc", data);
+    // Receiving data from server
+    socket.on("doc", (data) => {
+      setCurrentText(data.html);
+    });
 
-  // Receiving data from server
-  socket.on("doc", (data) => {
-    setCurrentText(data.html);
-  });
+    let data = {
+      _id: currentDocumentId,
+      html: currentText,
+    };
+
+    // Emitting data to server
+    socket.emit("doc", data);
+
+    return () => socket.off("doc");
+  }, [currentText, currentDocumentId]);
 
   // Setting new document
   const setNewDocumentValue = (document) => {
     setCurrentText(document.text);
     setCurrentName(document.name);
-    setCurrentDocument(document);
+    setCurrentDocumentId(document._id);
   };
 
   const resetDocumentValue = () => {
     setCurrentText("");
     setCurrentName("");
-    setCurrentDocument({});
+    setCurrentDocumentId("");
   };
+
+  // Error
+  const [error, setError] = useState(false);
+  const [customError, setCustomError] = useState("");
+  const [message, setMessage] = useState("");
 
   // Update document
   const updateDocument = () => {
     axios
       .patch(
-        API_URL + "/update/" + currentDocument._id,
+        API_URL + "/update/" + currentDocumentId,
         {
-          _id: currentDocument._id,
+          _id: currentDocumentId,
           text: currentText,
           name: currentName,
         },
@@ -127,6 +133,7 @@ function Editor({ socket }) {
       )
       .then((res) => {
         setError("");
+        setCurrentDocumentId(res.data._id);
         setDocumentsUpdated(!documentsUpdated);
         setMessage("Dokumentet har skapats");
       })
@@ -139,10 +146,17 @@ function Editor({ socket }) {
   return (
     <>
       <Toolbar
-        newDocument={resetDocumentValue}
+        currentDocumentId={currentDocumentId}
+        setMessage={setMessage}
+        setCustomError={setCustomError}
+        setError={setError}
         updateDocument={updateDocument}
         createDocument={createDocument}
+        resetDocumentValue={resetDocumentValue}
       />
+
+      <Errors error={error} customError={customError} message={message} />
+
       <input
         type="text"
         className="input__name"
@@ -150,11 +164,8 @@ function Editor({ socket }) {
         value={currentName}
         onChange={(e) => setCurrentName(e.target.value)}
       />
-      <ReactQuill theme="snow" value={currentText} onChange={setCurrentText} />
 
-      {error && <Error />}
-      {customError && <Error customError={customError} />}
-      {message && <div className="message__wrapper">{message}</div>}
+      <ReactQuill theme="snow" value={currentText} onChange={setCurrentText} />
 
       {documents.length > 0 && (
         <Documents
