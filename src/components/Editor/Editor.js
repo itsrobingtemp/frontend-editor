@@ -88,7 +88,7 @@ function Editor() {
     };
   }, [socket, quill, currentDocumentId]);
 
-  // Receive socket changes
+  // Receive socket change
   useEffect(() => {
     if (socket == null || quill == null) return;
 
