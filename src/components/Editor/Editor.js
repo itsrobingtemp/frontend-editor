@@ -75,7 +75,7 @@ function Editor() {
     return () => socket.off("doc");
   }, [currentText, currentDocumentId]);
 
-  // Setting new document
+  // Setting new document test
   const setNewDocumentValue = (document) => {
     setCurrentText(document.text);
     setCurrentName(document.name);
