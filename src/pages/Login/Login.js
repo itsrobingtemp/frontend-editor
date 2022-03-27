@@ -4,7 +4,7 @@ import axios from "axios";
 // CSS
 import "./Login.css";
 
-const API_URL = process.env.REACT_APP_API_DEV_URL;
+const API_URL = process.env.REACT_APP_API_PROD_URL;
 
 function Login() {
   const [error, setError] = useState(null);
@@ -13,13 +13,25 @@ function Login() {
 
   const handleLogin = () => {
     if (email !== "" || password !== "") {
-      axios
-        .post(API_URL + "/user/login", {
-          email: email,
-          password: password,
-        })
-        .then((res) => {
-          localStorage.setItem("auth-token", res.data.token);
+      const query = `mutation {
+        loginUser(email: "${email}", password: "${password}") {
+          token
+        }
+      }`;
+
+      fetch(API_URL + "/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          query: query,
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          localStorage.setItem("auth-token", data.data.loginUser.token);
           window.location.href = "/";
         })
         .catch((err) => {
@@ -33,6 +45,9 @@ function Login() {
   return (
     <div className="form__wrapper">
       <h1>Logga in</h1>
+      <p>
+        Applikationen kan testas med email: test@test.com & lösenord: test123
+      </p>
       <input
         type="email"
         className="input"

@@ -2,6 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import "quill/dist/quill.snow.css";
 import Quill from "quill";
 import axios from "axios";
+import { pdfExporter } from "quill-to-pdf";
+import { saveAs } from "file-saver";
+
+// CodeMirror
+import CodeMirror from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
 
 // CSS
 import "./Editor.css";
@@ -28,9 +34,13 @@ function Editor() {
   // If a doc gets updated, fetch list again
   const [documentsUpdated, setDocumentsUpdated] = useState(false);
 
+  // For the code editor
+  const [editorIsCode, setEditorIsCode] = useState(false);
+  const [codeEditorContent, setCodeEditorContent] = useState("false");
+
   // Variables
-  const API_URL = process.env.REACT_APP_API_DEV_URL;
-  const SOCKET_URL = "http://127.0.0.1:1338";
+  const API_URL = process.env.REACT_APP_API_PROD_URL;
+  const SOCKET_URL = process.env.REACT_APP_API_PROD_URL;
   const token = localStorage.getItem("auth-token") || "";
 
   // Error
@@ -59,8 +69,6 @@ function Editor() {
     const s = socketIOClient(SOCKET_URL, {
       query: { token },
     });
-
-    console.log("Connected to socket");
 
     setSocket(s);
 
@@ -110,7 +118,9 @@ function Editor() {
 
   // Get all documents on load
   useEffect(() => {
-    if (token) {
+    if (token == null) return;
+
+    if (!editorIsCode) {
       axios
         .get(API_URL + "/get", {
           headers: {
@@ -119,20 +129,50 @@ function Editor() {
         })
         .then((res) => {
           if (res.data.length > 0) {
+            console.log(res);
+            setDocuments(res.data);
+          }
+        });
+    } else {
+      axios
+        .get(API_URL + "/get/code", {
+          headers: {
+            Authorization: token,
+          },
+        })
+        .then((res) => {
+          if (res.data.length > 0) {
+            setDocuments([]);
             setDocuments(res.data);
           }
         });
     }
-  }, [documentsUpdated, API_URL, token]);
+  }, [documentsUpdated, API_URL, token, editorIsCode]);
 
   // Update document
   const updateDocument = () => {
+    let text;
+
+    if (editorIsCode) {
+      text = codeEditorContent;
+    } else {
+      text = quill.getContents();
+    }
+
+    if (
+      currentDocumentId == null ||
+      text == null ||
+      currentName == null ||
+      token == null
+    )
+      return;
+
     axios
       .patch(
         API_URL + "/update/" + currentDocumentId,
         {
           _id: currentDocumentId,
-          text: quill.getContents(),
+          text: text,
           name: currentName,
         },
         {
@@ -152,12 +192,26 @@ function Editor() {
 
   // Add new document
   const createDocument = () => {
+    let text;
+    let code;
+
+    if (editorIsCode) {
+      text = codeEditorContent;
+      code = true;
+    } else {
+      text = quill.getContents();
+      code = false;
+    }
+
+    if (text == null || currentName == null || token == null) return;
+
     axios
       .post(
         API_URL + "/post",
         {
-          text: quill.getContents(),
+          text: text,
           name: currentName,
+          iscode: code,
         },
         {
           headers: { Authorization: token },
@@ -177,7 +231,12 @@ function Editor() {
 
   // Loading a new document
   const setNewDocumentValue = (document) => {
-    quill.setContents(document.text);
+    if (editorIsCode) {
+      setCodeEditorContent(document.text);
+    } else {
+      quill.setContents(document.text);
+    }
+
     setCurrentName(document.name);
     setCurrentDocumentId(document._id);
   };
@@ -185,8 +244,51 @@ function Editor() {
   // Resetting to blank document
   const resetDocumentValue = () => {
     quill.setContents();
-    setCurrentName("");
+    setCurrentName("Default titel");
     setCurrentDocumentId("");
+    setCodeEditorContent("");
+    setMessage("");
+    setError(false);
+  };
+
+  // Generates & downloads a PDF
+  const generatePdf = async () => {
+    if (editorIsCode) return;
+
+    const quillDelta = quill.getContents();
+    const pdfBlob = await pdfExporter.generatePdf(quillDelta);
+    saveAs(pdfBlob, currentName + ".pdf");
+  };
+
+  // Switch editor type
+  const handleEditor = () => {
+    setEditorIsCode(!editorIsCode);
+    resetDocumentValue();
+    setDocuments([]);
+  };
+
+  // Executes code through API
+  const executeCode = () => {
+    if (!editorIsCode) return;
+
+    try {
+      const base64 = btoa(codeEditorContent);
+
+      axios
+        .post("https://execjs.emilfolino.se/code", {
+          code: base64,
+        })
+        .then((response) => {
+          let decodedOutput = atob(response.data.data);
+          setMessage("Kod exekverad. Kolla konsolen!");
+          console.log(decodedOutput);
+        })
+        .catch((error) => {
+          setCustomError("Nått gick snett..");
+        });
+    } catch (err) {
+      setCustomError("Nått gick snett med konverteringen till base64");
+    }
   };
 
   return (
@@ -199,6 +301,10 @@ function Editor() {
         updateDocument={updateDocument}
         createDocument={createDocument}
         resetDocumentValue={resetDocumentValue}
+        generatePdf={generatePdf}
+        handleEditor={handleEditor}
+        editorIsCode={editorIsCode}
+        executeCode={executeCode}
       />
 
       <Errors error={error} customError={customError} message={message} />
@@ -211,7 +317,18 @@ function Editor() {
         onChange={(e) => setCurrentName(e.target.value)}
       />
 
-      <div className="quill__container" ref={quillRef}></div>
+      {editorIsCode ? (
+        <CodeMirror
+          value={codeEditorContent}
+          height="300px"
+          extensions={[javascript({ jsx: true })]}
+          onChange={(value, viewUpdate) => {
+            setCodeEditorContent(value);
+          }}
+        />
+      ) : (
+        <div className="quill__container" ref={quillRef}></div>
+      )}
 
       {documents.length > 0 && (
         <Documents

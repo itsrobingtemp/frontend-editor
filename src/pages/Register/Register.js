@@ -4,7 +4,7 @@ import axios from "axios";
 // CSS
 import "./Register.css";
 
-const API_URL = process.env.REACT_APP_API_DEV_URL;
+const API_URL = process.env.REACT_APP_API_PROD_URL;
 
 function Register() {
   const [error, setError] = useState(null);
@@ -15,18 +15,36 @@ function Register() {
   const handleRegister = () => {
     if (password !== passwordRepeat) return setError("Lösenorden matchar inte");
     if (email !== "" || password !== "" || passwordRepeat === password) {
-      axios
-        .post(API_URL + "/user/register", {
-          email: email,
-          password: password,
-        })
-        .then((res) => {
-          localStorage.setItem("auth-token", res.data.token);
-          window.location.href = "/";
+      const query = `mutation {
+        registerUser(email: "${email}", password: "${password}") {
+          token
+        }
+      }`;
+
+      fetch(API_URL + "/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          query: query,
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          localStorage.setItem("auth-token", data.data.registerUser.token);
+
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 1000);
         })
         .catch((err) => {
+          console.log(err);
           setError("Nått gick snett, försök pånytt");
         });
+    } else {
+      setError("Ange all uppgifter");
     }
   };
 
