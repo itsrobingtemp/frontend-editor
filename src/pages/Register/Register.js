@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+// Components
+import Nav from "../../components/Nav/Nav";
 
 // CSS
 import "./Register.css";
@@ -6,6 +10,8 @@ import "./Register.css";
 const API_URL = process.env.REACT_APP_API_PROD_URL;
 
 function Register() {
+  const navigate = useNavigate();
+
   const [error, setError] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,8 +41,8 @@ function Register() {
           localStorage.setItem("auth-token", data.data.registerUser.token);
 
           setTimeout(() => {
-            window.location.href = "/";
-          }, 1000);
+            navigate("/editor");
+          }, 500);
         })
         .catch((err) => {
           console.log(err);
@@ -48,34 +54,38 @@ function Register() {
   };
 
   return (
-    <div className="form__wrapper">
-      <h1>Registrera dig</h1>
-      <input
-        type="email"
-        className="input"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        className="input"
-        placeholder="Lösenord"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <input
-        type="password"
-        className="input"
-        placeholder="Repetera lösenord"
-        value={passwordRepeat}
-        onChange={(e) => setPasswordRepeat(e.target.value)}
-      />
-      <button className="toolbar__btn" onClick={handleRegister}>
-        Registrera dig
-      </button>
-      {error && <p className="error">{error}</p>}
-    </div>
+    <>
+      <div className="form__wrapper">
+        <Nav />
+
+        <h1>Registrera dig</h1>
+        <input
+          type="email"
+          className="input"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          className="input"
+          placeholder="Lösenord"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <input
+          type="password"
+          className="input"
+          placeholder="Repetera lösenord"
+          value={passwordRepeat}
+          onChange={(e) => setPasswordRepeat(e.target.value)}
+        />
+        <button className="toolbar__btn" onClick={handleRegister}>
+          Registrera dig
+        </button>
+        {error && <p className="error">{error}</p>}
+      </div>
+    </>
   );
 }
 

@@ -4,8 +4,9 @@ import Quill from "quill";
 import axios from "axios";
 import { pdfExporter } from "quill-to-pdf";
 import { saveAs } from "file-saver";
+import { useNavigate } from "react-router-dom";
 
-// CodeMirror
+// CodeMirror comp
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 
@@ -16,11 +17,13 @@ import "./Editor.css";
 import Toolbar from "../Toolbar/Toolbar";
 import Documents from "../Documents/Documents";
 import Errors from "../Errors/Errors";
+import Nav from "../../components/Nav/Nav";
 
 // Socket
 import socketIOClient from "socket.io-client";
 
 function Editor() {
+  const navigate = useNavigate();
   const [socket, setSocket] = useState();
   const [quill, setQuill] = useState();
 
@@ -75,7 +78,7 @@ function Editor() {
     return () => {
       s.disconnect();
     };
-  }, [token]);
+  }, [token, SOCKET_URL]);
 
   // Send socket changes
   useEffect(() => {
@@ -116,10 +119,14 @@ function Editor() {
     };
   }, [socket, quill]);
 
+  useEffect(() => {
+    if (!token) {
+      navigate("/");
+    }
+  });
+
   // Get all documents on load
   useEffect(() => {
-    if (token == null) return;
-
     if (!editorIsCode) {
       axios
         .get(API_URL + "/get", {
@@ -293,6 +300,7 @@ function Editor() {
 
   return (
     <>
+      <Nav loggedIn={token} />
       <Toolbar
         currentDocumentId={currentDocumentId}
         setMessage={setMessage}

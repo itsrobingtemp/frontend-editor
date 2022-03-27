@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import Nav from "../../components/Nav/Nav";
 
 // CSS
 import "./Login.css";
@@ -6,6 +9,7 @@ import "./Login.css";
 const API_URL = process.env.REACT_APP_API_PROD_URL;
 
 function Login() {
+  const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +35,10 @@ function Login() {
         .then((r) => r.json())
         .then((data) => {
           localStorage.setItem("auth-token", data.data.loginUser.token);
-          window.location.href = "/";
+
+          setTimeout(() => {
+            navigate("/editor");
+          }, 500);
         })
         .catch((err) => {
           setError("Nått gick snett, försök pånytt");
@@ -42,30 +49,34 @@ function Login() {
   };
 
   return (
-    <div className="form__wrapper">
-      <h1>Logga in</h1>
-      <p>
-        Applikationen kan testas med email: test@test.com & lösenord: test123
-      </p>
-      <input
-        type="email"
-        className="input"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        className="input"
-        placeholder="Lösenord"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button className="toolbar__btn" onClick={handleLogin}>
-        Logga in
-      </button>
-      {error && <p className="error">{error}</p>}
-    </div>
+    <>
+      <div className="form__wrapper">
+        <Nav />
+
+        <h1>Logga in</h1>
+        <p>
+          Applikationen kan testas med email: test@test.com & lösenord: test123
+        </p>
+        <input
+          type="email"
+          className="input"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          className="input"
+          placeholder="Lösenord"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button className="toolbar__btn" onClick={handleLogin}>
+          Logga in
+        </button>
+        {error && <p className="error">{error}</p>}
+      </div>
+    </>
   );
 }
 

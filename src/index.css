@@ -45,3 +45,7 @@ code {
 .toolbar__btn:hover {
   background: #f5f5f5;
 }
+
+.editor__intro {
+  text-align: center;
+}
