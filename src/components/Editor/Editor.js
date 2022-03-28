@@ -136,7 +136,6 @@ function Editor() {
         })
         .then((res) => {
           if (res.data.length > 0) {
-            console.log(res);
             setDocuments(res.data);
           }
         });
