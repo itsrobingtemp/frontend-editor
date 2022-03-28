@@ -51,7 +51,7 @@ function Editor() {
   const [customError, setCustomError] = useState("");
   const [message, setMessage] = useState("");
 
-  // Quill editor
+  // For the quill editor
   const quillRef = useCallback((wrapper) => {
     if (wrapper == null) return;
     wrapper.innerHTML = "";
@@ -276,7 +276,9 @@ function Editor() {
 
   // Executes code through API
   const executeCode = () => {
-    if (!editorIsCode) return;
+    if (!editorIsCode) {
+      setCustomError("Var vänligt använd kodeditorn");
+    }
 
     try {
       const base64 = btoa(codeEditorContent);

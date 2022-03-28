@@ -28,11 +28,6 @@
   color: #61dafb;
 }
 
-.editor__intro {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-}
-
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
